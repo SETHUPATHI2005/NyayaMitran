@@ -219,11 +219,15 @@ class LLMService:
         logger.info("LLM: Requested language code=%s label=%s", code, label)
 
         if self.use_hf:
-            return self._hf_generate(question, context, history, user_location, label)
-        if self.use_openai:
-            return self._openai_generate(question, context, history, user_location, label)
-        # Fallback generator expects label/code handling inside _translate_if_needed
-        return self._fallback_generate(question, context, label)
+            answer, laws, confidence = self._hf_generate(question, context, history, user_location, "English")
+        elif self.use_openai:
+            answer, laws, confidence = self._openai_generate(question, context, history, user_location, "English")
+        else:
+            answer, laws, confidence = self._fallback_generate(question, context)
+
+        # Translate once at the end so all paths behave the same way.
+        translated = self._translate_if_needed(answer, code)
+        return translated, laws, confidence
 
     def resolve_language(self, response_language: str) -> Tuple[str, str]:
         """Return a tuple (iso_code, human_label) for a frontend language value.
@@ -300,7 +304,7 @@ class LLMService:
 
             user_msg = (
                 f"LEGAL CONTEXT:\n{context_text}\n\n"
-                f"RESPONSE LANGUAGE: {response_language}\n\n"
+                f"RESPONSE LANGUAGE: English\n\n"
                 f"QUESTION: {question}"
             )
             if user_location:
@@ -326,7 +330,7 @@ class LLMService:
                 "I could not find specific information for this legal question. "
                 "Please consult a lawyer or call NALSA helpline at 15100 for free legal aid."
             )
-            return self._translate_if_needed(msg, response_language), [], 0.3
+            return msg, [], 0.3
 
         top = context[0]
         text = top.get("text", "")
@@ -346,7 +350,7 @@ class LLMService:
             f"{text}{extra}{penalty_block}\n\nSource: {source}\n\n"
             "Next steps: Contact your nearest Legal Services Authority or call 15100."
         )
-        return self._translate_if_needed(answer, response_language), acts, 0.7
+        return answer, acts, 0.7
 
     def _format_context(self, context: List[Dict]) -> str:
         if not context:
@@ -364,7 +368,7 @@ LEGAL CONTEXT:
 {context_text}
 {loc_note}
 
-RESPONSE LANGUAGE: {response_language}
+RESPONSE LANGUAGE: English
 
 CONVERSATION HISTORY:
 {history}
