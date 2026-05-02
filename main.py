@@ -310,6 +310,8 @@ def chat(req: ChatRequest) -> JSONResponse:
     )
     # Pass the frontend language code (e.g. 'hi', 'en') directly to the LLM service.
     # The LLM service will accept either a language label or an ISO code.
+    # Resolve language for debugging and pass through to LLM service
+    lang_code, lang_label = llm_service.resolve_language(req.language)
     answer, laws_cited, confidence = llm_service.generate_answer(
         question=req.message,
         context=context,
@@ -323,6 +325,8 @@ def chat(req: ChatRequest) -> JSONResponse:
             "laws_cited": laws_cited,
             "suggested_actions": _build_suggested_actions(answer),
             "confidence": round(float(confidence), 2),
+            "language_code": lang_code,
+            "language_label": lang_label,
         }
     )
 

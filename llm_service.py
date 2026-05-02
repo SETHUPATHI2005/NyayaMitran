@@ -214,21 +214,38 @@ class LLMService:
         response_language: str = "English",
     ) -> Tuple[str, List[str], float]:
         """Returns (answer_text, laws_cited, confidence_score)."""
-        # Normalize response language into code and label.
-        # Frontend sends ISO code like 'hi' or label like 'Hindi'.
-        if isinstance(response_language, str) and re.match(r"^[a-z]{2,3}(-[A-Z]{2})?$", response_language):
-            code = response_language.split("-")[0]
-            label = CODE_TO_LABEL.get(code, CODE_TO_LABEL.get("en"))
-        else:
-            # response_language appears to be a label; try map to code
-            code = LANGUAGE_TO_CODE.get(response_language, "en")
-            label = response_language if response_language else CODE_TO_LABEL.get("en")
+        # Resolve response language into a normalized code and human label
+        code, label = self.resolve_language(response_language)
+        logger.info("LLM: Requested language code=%s label=%s", code, label)
 
         if self.use_hf:
             return self._hf_generate(question, context, history, user_location, label)
         if self.use_openai:
             return self._openai_generate(question, context, history, user_location, label)
-        return self._fallback_generate(question, context, response_language)
+        # Fallback generator expects label/code handling inside _translate_if_needed
+        return self._fallback_generate(question, context, label)
+
+    def resolve_language(self, response_language: str) -> Tuple[str, str]:
+        """Return a tuple (iso_code, human_label) for a frontend language value.
+
+        Accepts either ISO codes (e.g. 'hi') or labels (e.g. 'Hindi').
+        Falls back to English when unknown.
+        """
+        if isinstance(response_language, str) and re.match(r"^[a-z]{2,3}(-[A-Z]{2})?$", response_language):
+            code = response_language.split("-")[0]
+            label = CODE_TO_LABEL.get(code, CODE_TO_LABEL.get("default", "English"))
+            return code, label
+        # If a label like 'Hindi' was provided, map to code if possible
+        code = LANGUAGE_TO_CODE.get(response_language, None)
+        if code:
+            label = CODE_TO_LABEL.get(code, CODE_TO_LABEL.get("default", "English"))
+            return code, label
+        # Try reverse lookup (label provided but not in LANGUAGE_TO_CODE)
+        lower = (response_language or "").strip().lower()
+        for lbl, c in LANGUAGE_TO_CODE.items():
+            if lbl.lower() == lower:
+                return c, CODE_TO_LABEL.get(c, CODE_TO_LABEL.get("default", "English"))
+        return "en", CODE_TO_LABEL.get("default", "English")
 
     def _hf_generate(self, question, context, history, user_location, response_language):
         context_text = self._format_context(context)
