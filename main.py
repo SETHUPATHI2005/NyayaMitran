@@ -308,12 +308,14 @@ def chat(req: ChatRequest) -> JSONResponse:
         f"{'User' if item.role == 'user' else 'Assistant'}: {item.content}"
         for item in req.history[-10:]
     )
+    # Pass the frontend language code (e.g. 'hi', 'en') directly to the LLM service.
+    # The LLM service will accept either a language label or an ISO code.
     answer, laws_cited, confidence = llm_service.generate_answer(
         question=req.message,
         context=context,
         history=history_text,
         user_location=req.user_location,
-        response_language=LANGUAGE_LABELS.get(req.language, "English"),
+        response_language=req.language,
     )
     return JSONResponse(
         {

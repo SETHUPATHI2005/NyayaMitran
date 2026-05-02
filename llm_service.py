@@ -367,7 +367,14 @@ USER QUESTION: {question} [/INST]"""
         return unique[:5]
 
     def _translate_if_needed(self, text: str, response_language: str) -> str:
-        lang_code = LANGUAGE_TO_CODE.get(response_language, "en")
+        # response_language may be an ISO code (e.g. 'hi', 'en') sent from frontend
+        # or a language label (e.g. 'Hindi', 'English'). Accept both forms.
+        # If it's already an ISO-like code, use it directly; otherwise map the label.
+        if isinstance(response_language, str) and re.match(r"^[a-z]{2,3}(-[A-Z]{2})?$", response_language):
+            lang_code = response_language.split("-")[0]
+        else:
+            lang_code = LANGUAGE_TO_CODE.get(response_language, "en")
+
         if lang_code == "en":
             return text
         if TRANSLATION_MODE in {"offline", "hybrid"}:
