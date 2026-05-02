@@ -13,7 +13,7 @@
 
   var configured = clean(localStorage.getItem(KEY));
   var isLocal = ["localhost", "127.0.0.1"].indexOf(window.location.hostname) !== -1 || window.location.protocol === "file:";
-  var fallback = isLocal ? "http://127.0.0.1:8000" : "https://nyayamithra-api.fly.dev";
+  var fallback = isLocal ? "http://127.0.0.1:8000" : "https://nyayamitran.onrender.com";
 
   // Expose fallback so page-level clients can auto-recover from stale saved API URLs.
   window.NYAYAMITHRA_DEFAULT_API = fallback;
