@@ -58,6 +58,27 @@ LANGUAGE_TO_CODE = {
     "Urdu": "ur",
 }
 
+# map common ISO codes to human-friendly labels used in LLM prompts
+CODE_TO_LABEL = {
+    "en": "English",
+    "hi": "Hindi",
+    "bn": "Bengali",
+    "gu": "Gujarati",
+    "kn": "Kannada",
+    "ml": "Malayalam",
+    "mr": "Marathi",
+    "ne": "Nepali",
+    "or": "Odia",
+    "pa": "Punjabi",
+    "ta": "Tamil",
+    "te": "Telugu",
+    "ur": "Urdu",
+    "as": "Assamese",
+    "sd": "Sindhi",
+    "sa": "Sanskrit",
+    "kok": "Konkani",
+}
+
 
 PENALTY_GUIDE = {
     "Bharatiya Nyaya Sanhita, 2023": [
@@ -185,10 +206,20 @@ class LLMService:
         response_language: str = "English",
     ) -> Tuple[str, List[str], float]:
         """Returns (answer_text, laws_cited, confidence_score)."""
+        # Normalize response language into code and label.
+        # Frontend sends ISO code like 'hi' or label like 'Hindi'.
+        if isinstance(response_language, str) and re.match(r"^[a-z]{2,3}(-[A-Z]{2})?$", response_language):
+            code = response_language.split("-")[0]
+            label = CODE_TO_LABEL.get(code, CODE_TO_LABEL.get("en"))
+        else:
+            # response_language appears to be a label; try map to code
+            code = LANGUAGE_TO_CODE.get(response_language, "en")
+            label = response_language if response_language else CODE_TO_LABEL.get("en")
+
         if self.use_hf:
-            return self._hf_generate(question, context, history, user_location, response_language)
+            return self._hf_generate(question, context, history, user_location, label)
         if self.use_openai:
-            return self._openai_generate(question, context, history, user_location, response_language)
+            return self._openai_generate(question, context, history, user_location, label)
         return self._fallback_generate(question, context, response_language)
 
     def _hf_generate(self, question, context, history, user_location, response_language):
