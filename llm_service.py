@@ -77,6 +77,14 @@ CODE_TO_LABEL = {
     "sd": "Sindhi",
     "sa": "Sanskrit",
     "kok": "Konkani",
+    "brx": "Bodo",
+    "doi": "Dogri",
+    "mai": "Maithili",
+    "mni": "Manipuri",
+    "ks": "Kashmiri",
+    "sat": "Santali",
+    # fallback label for unknown codes
+    "default": "English",
 }
 
 
